@@ -4,8 +4,13 @@ services:
   verigpt:
     build: .
     container_name: verigpt
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    # Load environment variables from .env file
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
     volumes:
       - ./output:/app/output
+      # Mount .env file as read-only for python-dotenv to read
+      - ./.env:/app/.env:ro
     restart: unless-stopped

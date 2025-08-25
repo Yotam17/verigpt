@@ -22,8 +22,12 @@ COPY . .
 # Create output directory
 RUN mkdir -p output
 
-# Set environment variable for OpenAI
-ENV OPENAI_API_KEY=your-key-here
+# Don't set environment variables here - they will be loaded from .env file
+# The .env file should be mounted or copied at runtime
+# The application uses python-dotenv to load environment variables
 
-# Entry point
-CMD ["python", "verigpt_agent.py"]
+# Expose port for FastAPI
+EXPOSE 8000
+
+# Entry point for FastAPI service
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

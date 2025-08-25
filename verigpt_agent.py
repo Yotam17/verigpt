@@ -20,6 +20,28 @@ from prompt_bank import PromptBank
 # Load environment variables
 load_dotenv()
 
+# Debug: Check if environment variables are loaded
+def debug_env_vars():
+    """Debug function to check environment variables"""
+    print("🔍 Debug: Environment variables check:")
+    print(f"  OPENAI_API_KEY: {'✅ Set' if os.getenv('OPENAI_API_KEY') else '❌ Not set'}")
+    print(f"  OPENAI_MODEL: {os.getenv('OPENAI_MODEL', 'Not set')}")
+    print(f"  OPENAI_TEMPERATURE: {os.getenv('OPENAI_TEMPERATURE', 'Not set')}")
+    
+    # Check if .env file exists
+    env_file = Path('.env')
+    if env_file.exists():
+        print(f"  .env file: ✅ Found at {env_file.absolute()}")
+        try:
+            with open(env_file, 'r') as f:
+                content = f.read()
+                lines = [line.strip() for line in content.split('\n') if line.strip() and not line.startswith('#')]
+                print(f"  .env variables: {len(lines)} variables found")
+        except Exception as e:
+            print(f"  .env read error: {e}")
+    else:
+        print(f"  .env file: ❌ Not found")
+
 # Allowed file extensions
 ALLOWED_FILE_EXTENSIONS = ["sv", "svh"]
 
@@ -212,6 +234,11 @@ def main():
     """Main entry point"""
     try:
         print("🚀 Starting VeriGPT Agent...")
+        
+        # Debug environment variables first
+        debug_env_vars()
+        print()
+        
         agent = VeriGPTAgent()
         
         # Test file loading first
@@ -278,10 +305,23 @@ def test_structure_only():
         print(f"❌ Error: {e}")
         return False
 
+def test_env_only():
+    """Test function to check environment variables without OpenAI dependencies"""
+    print("🧪 Testing environment variables only...")
+    debug_env_vars()
+    return True
+
 if __name__ == "__main__":
     import sys
     
-    if len(sys.argv) > 1 and sys.argv[1] == "--test-structure":
-        exit(0 if test_structure_only() else 1)
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--test-structure":
+            exit(0 if test_structure_only() else 1)
+        elif sys.argv[1] == "--test-env":
+            exit(0 if test_env_only() else 1)
+        else:
+            print(f"Unknown argument: {sys.argv[1]}")
+            print("Available options: --test-structure, --test-env")
+            exit(1)
     else:
         exit(main())
