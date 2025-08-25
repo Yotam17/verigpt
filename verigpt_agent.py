@@ -4,19 +4,24 @@ VeriGPT Agent - AI-based SystemVerilog code analysis using RAG
 """
 
 import os
+import glob
 from typing import List
+from pathlib import Path
 from dotenv import load_dotenv
 from langchain.agents import initialize_agent, AgentType
 from langchain.tools import Tool
-from langchain.vectorstores import FAISS
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
 from langchain.schema import Document
 from prompt_bank import PromptBank
 
 # Load environment variables
 load_dotenv()
+
+# Allowed file extensions
+ALLOWED_FILE_EXTENSIONS = ["sv", "svh"]
 
 class VeriGPTAgent:
     """Main agent class for SystemVerilog code analysis"""
@@ -35,17 +40,55 @@ class VeriGPTAgent:
         self.embeddings = OpenAIEmbeddings(openai_api_key=self.api_key)
         self.prompt_bank = PromptBank()
         
-    def load_sv_file(self, file_path: str) -> str:
-        """Load SystemVerilog file content"""
-        try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                return file.read()
-        except FileNotFoundError:
-            raise FileNotFoundError(f"File {file_path} not found")
-        except Exception as e:
-            raise Exception(f"Error reading file {file_path}: {e}")
+    def load_sv_files_from_data(self, data_dir: str = "data/raw_full") -> List[Document]:
+        """Load all SystemVerilog files from data/raw_full directory recursively"""
+        documents = []
+        data_path = Path(data_dir)
+        
+        if not data_path.exists():
+            raise FileNotFoundError(f"Data directory '{data_dir}' not found")
+        
+        # Find all files with allowed extensions recursively
+        all_files = []
+        for ext in ALLOWED_FILE_EXTENSIONS:
+            pattern = str(data_path / "**" / f"*.{ext}")
+            files = glob.glob(pattern, recursive=True)
+            all_files.extend(files)
+        
+        if not all_files:
+            raise FileNotFoundError(f"No files with extensions {ALLOWED_FILE_EXTENSIONS} found in {data_dir}")
+        
+        print(f"🔍 Found {len(all_files)} files with extensions {ALLOWED_FILE_EXTENSIONS}:")
+        
+        for file_path in all_files:
+            try:
+                file_path_obj = Path(file_path)
+                # Calculate relative path from data/raw_full
+                relative_path = file_path_obj.relative_to(data_path)
+                
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    content = file.read()
+                    
+                    # Create document with comprehensive metadata
+                    doc = Document(
+                        page_content=content,
+                        metadata={
+                            "filename": file_path_obj.name,
+                            "path": str(relative_path),
+                            "full_path": str(file_path_obj),
+                            "extension": file_path_obj.suffix,
+                            "size": len(content)
+                        }
+                    )
+                    documents.append(doc)
+                    print(f"  ✅ Loaded: {relative_path} ({len(content)} chars)")
+                    
+            except Exception as e:
+                print(f"  ❌ Error reading {file_path}: {e}")
+        
+        return documents
     
-    def split_content(self, content: str) -> List[Document]:
+    def split_content(self, documents: List[Document]) -> List[Document]:
         """Split content into chunks for vectorization"""
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
@@ -53,8 +96,24 @@ class VeriGPTAgent:
             separators=["\n\n", "\n", " ", ""]
         )
         
-        chunks = text_splitter.split_text(content)
-        return [Document(page_content=chunk, metadata={"source": "data/fifo.sv"}) for chunk in chunks]
+        all_chunks = []
+        
+        for doc in documents:
+            chunks = text_splitter.split_text(doc.page_content)
+            # Preserve metadata for each chunk
+            for i, chunk in enumerate(chunks):
+                chunk_doc = Document(
+                    page_content=chunk,
+                    metadata={
+                        **doc.metadata,
+                        "chunk_index": i,
+                        "total_chunks": len(chunks)
+                    }
+                )
+                all_chunks.append(chunk_doc)
+        
+        print(f"✂️  Split into {len(all_chunks)} chunks from {len(documents)} files")
+        return all_chunks
     
     def create_vectorstore(self, documents: List[Document]) -> FAISS:
         """Create FAISS vector store from documents"""
@@ -64,25 +123,31 @@ class VeriGPTAgent:
         """Create RAG retrieval tool"""
         def rag_search(query: str) -> str:
             """Search the vector store for relevant information"""
-            docs = vectorstore.similarity_search(query, k=3)
-            return "\n\n".join([doc.page_content for doc in docs])
+            docs = vectorstore.similarity_search(query, k=5)  # Increased to 5 for better coverage
+            results = []
+            for doc in docs:
+                filename = doc.metadata.get("filename", "unknown")
+                path = doc.metadata.get("path", "unknown")
+                chunk_info = f"[chunk {doc.metadata.get('chunk_index', 0)+1}/{doc.metadata.get('total_chunks', 1)}]"
+                results.append(f"--- From {path} {chunk_info} ---\n{doc.page_content}")
+            return "\n\n".join(results)
         
         return Tool(
             name="SystemVerilog_Codebase_Search",
-            description="Search the SystemVerilog codebase for relevant information about modules, ports, signals, and functionality",
+            description="Search the SystemVerilog codebase for relevant information about modules, ports, signals, and functionality. Returns content from multiple files with source information.",
             func=rag_search
         )
     
-    def run_analysis(self, sv_file_path: str = "fifo.sv") -> str:
+    def run_analysis(self, data_dir: str = "data/raw_full") -> str:
         """Main method to run the complete analysis"""
-        print("🔍 Loading SystemVerilog file...")
-        content = self.load_sv_file(sv_file_path)
+        print("🔍 Loading SystemVerilog files from data/raw_full directory...")
+        documents = self.load_sv_files_from_data(data_dir)
         
         print("✂️  Splitting content into chunks...")
-        documents = self.split_content(content)
+        chunked_documents = self.split_content(documents)
         
         print("📚 Creating FAISS vector store...")
-        vectorstore = self.create_vectorstore(documents)
+        vectorstore = self.create_vectorstore(chunked_documents)
         
         print("🛠️  Setting up RAG tool...")
         rag_tool = self.create_rag_tool(vectorstore)
@@ -97,18 +162,64 @@ class VeriGPTAgent:
         )
         
         print("📝 Loading analysis prompt...")
-        prompt = self.prompt_bank.format_prompt("analyze_sv", code_block=content)
+        # Create a summary of all loaded files for the prompt
+        file_summary = "\n\n".join([
+            f"File: {doc.metadata['path']}\nSize: {doc.metadata['size']} chars\nPreview:\n{doc.page_content[:500]}..."
+            for doc in documents[:3]  # Show first 3 files as preview
+        ])
+        
+        prompt = self.prompt_bank.format_prompt("analyze_sv", code_block=file_summary)
         
         print("🚀 Running analysis...")
         result = agent.run(prompt)
         
         return result
 
+    def test_file_loading(self, data_dir: str = "data/raw_full") -> None:
+        """Test function to check file loading without running the full analysis"""
+        print("🧪 Testing file loading...")
+        try:
+            documents = self.load_sv_files_from_data(data_dir)
+            print(f"✅ Successfully loaded {len(documents)} files")
+            
+            # Show some statistics
+            total_size = sum(doc.metadata.get("size", 0) for doc in documents)
+            print(f"📊 Total content size: {total_size:,} characters")
+            
+            # Show file distribution by directory
+            dir_stats = {}
+            for doc in documents:
+                path_parts = Path(doc.metadata["path"]).parts
+                if len(path_parts) > 1:
+                    top_dir = path_parts[0]
+                    dir_stats[top_dir] = dir_stats.get(top_dir, 0) + 1
+            
+            print("📁 Files by top-level directory:")
+            for dir_name, count in sorted(dir_stats.items()):
+                print(f"  {dir_name}/: {count} files")
+            
+            # Show metadata example for first file
+            if documents:
+                first_doc = documents[0]
+                print(f"\n📋 Metadata example for first file:")
+                for key, value in first_doc.metadata.items():
+                    print(f"  {key}: {value}")
+                
+        except Exception as e:
+            print(f"❌ Error in test: {e}")
+
 def main():
     """Main entry point"""
     try:
         print("🚀 Starting VeriGPT Agent...")
         agent = VeriGPTAgent()
+        
+        # Test file loading first
+        agent.test_file_loading()
+        
+        print("\n" + "="*50)
+        print("🚀 Starting full analysis...")
+        print("="*50)
         
         result = agent.run_analysis()
         
@@ -124,5 +235,53 @@ def main():
     
     return 0
 
+def test_structure_only():
+    """Test function to check file structure without OpenAI dependencies"""
+    print("🧪 Testing file structure only...")
+    
+    try:
+        from pathlib import Path
+        import glob
+        
+        data_dir = "data/raw_full"
+        data_path = Path(data_dir)
+        
+        if not data_path.exists():
+            print(f"❌ Data directory '{data_dir}' not found")
+            return False
+        
+        # Find all .sv and .svh files
+        all_files = []
+        for ext in ["sv", "svh"]:
+            pattern = str(data_path / "**" / f"*.{ext}")
+            files = glob.glob(pattern, recursive=True)
+            all_files.extend(files)
+        
+        print(f"🔍 Found {len(all_files)} SystemVerilog files:")
+        
+        # Group by directory
+        dir_stats = {}
+        for file_path in all_files:
+            file_path_obj = Path(file_path)
+            relative_path = file_path_obj.relative_to(data_path)
+            top_dir = relative_path.parts[0] if relative_path.parts else "root"
+            dir_stats[top_dir] = dir_stats.get(top_dir, 0) + 1
+            print(f"  ✅ {relative_path}")
+        
+        print(f"\n📁 Files by top-level directory:")
+        for dir_name, count in sorted(dir_stats.items()):
+            print(f"  {dir_name}/: {count} files")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return False
+
 if __name__ == "__main__":
-    exit(main())
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "--test-structure":
+        exit(0 if test_structure_only() else 1)
+    else:
+        exit(main())

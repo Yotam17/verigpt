@@ -1,0 +1,43 @@
+# Copyright 2018 Tymoteusz Blazejczyk
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+create_project @ARG_TOP_LEVEL_ENTITY@ -in_memory
+
+set includes {}
+set defines {}
+set sources {}
+
+@vivado_defines_list@
+
+@vivado_includes_list@
+
+@vivado_sources_list@
+
+add_files $sources
+
+set synth_arguments {}
+
+lappend synth_arguments -name @ARG_TOP_LEVEL_ENTITY@
+lappend synth_arguments -top @ARG_TOP_LEVEL_ENTITY@
+lappend synth_arguments -rtl
+
+foreach def $defines {
+    lappend synth_arguments -verilog_define $def
+}
+
+if [llength includes] {
+    lappend synth_arguments -include_dirs $includes
+}
+
+synth_design {*}$synth_arguments

@@ -1,0 +1,192 @@
+# Copyright 2018 Tymoteusz Blazejczyk
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Git files
+*.orig
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.o
+*.x
+*.lo
+*.obj
+*.slo
+*.objdump
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dll
+*.dylib
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.a
+*.la
+*.lai
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+*.elf
+
+# Vim
+*.swp
+
+# ModelSim files
+*.ver
+*.wlf
+*.sym
+*.vstf
+*.qdb
+_info
+_vmake
+transcript
+
+# Xilinx files
+*.cache
+*.data
+*.xpr
+*.log
+*.bld
+*.chk
+*.cmd_log
+*.cxt
+*.gise
+*.gyd
+*.jed
+*.lso
+*.mfd
+*.nga
+*.ngc
+*.ngd
+*.ngr
+*.pad
+*.pnx
+*.prj
+*.rpt
+*.stx
+*.syr
+*.tim
+*.tspec
+*.vm6
+*.xst
+*.xrpt
+*.err
+*_html
+*.sld
+*.csv
+xst
+netgen
+iseconfig
+xlnx_auto*
+_ngo
+_xmsgs
+component.xml
+*.jou
+xgui
+*.runs
+*.srcs
+*.sdk
+.Xil
+*_INFO.txt
+*_dump.txt
+
+# Quartus files
+*~
+*.os
+*.hw
+*.vo
+*.do
+*.cdf
+*.ddb
+*.dpf
+*.eqn
+*.jdi
+*.pof
+*.ptf.*
+*.qar
+*.qarlog
+*.qpg
+*.qtl
+*.qws
+*.gdb
+*.map
+*.rpt
+*.sof
+*.spd
+*.rbf
+*.bsf
+*.cmp
+*.qip
+*.pin
+*.ocp
+*.svd
+*.eda.rpt
+*.asm.rpt
+*.map.*
+*.sta.*
+*.fit.*
+*.smsg
+*.done
+*.qgsimc
+*.regmap
+*.summary
+*.qgsynthc
+*.sopcinfo
+*.sopc_builder
+*webtalk*
+**/db/*
+**/qdb/*
+**/.qsys_edit/*
+**/output_files/*
+**/hc_output/*
+**/hps_isw_handoff/*
+**/graybox_tmp/*
+**/tmp-clearbox/*
+**/incremental_db/*
+
+# Binary files
+*.hex
+*.dat
+*.pdf
+*.png
+*.bin
+*.doc
+*.docx
+
+# Misc files
+*.htm
+*.csv
+*.ini
+*.xml
+*.log
+*.bak
+*.BAK*
+*.html
+*.setup
+*.stackdump
+
+# Build directories
+**/build*/**
