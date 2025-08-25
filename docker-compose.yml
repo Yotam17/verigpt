@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  verigpt:
+    build: .
+    container_name: verigpt
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./output:/app/output
+    restart: unless-stopped

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: verigpt
+    env: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+    healthCheckPath: /
+    numInstances: 1
+    autoDeploy: false

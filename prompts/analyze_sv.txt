@@ -1,0 +1,31 @@
+You are an expert SystemVerilog engineer and verification specialist. Analyze the following SystemVerilog code and provide a comprehensive analysis.
+
+## CODE TO ANALYZE:
+{{code_block}}
+
+## ANALYSIS REQUIREMENTS:
+
+Please provide a detailed analysis covering:
+
+### 1. FUNCTIONALITY DESCRIPTION
+- Describe what this module does
+- Explain the main purpose and behavior
+- Identify key inputs, outputs, and internal signals
+- Describe the control flow and timing
+
+### 2. SYSTEMVERILOG ASSERTIONS
+Generate exactly 3 SystemVerilog assertions that would be useful for verifying this module:
+
+- **Assertion 1**: [Provide assertion with explanation]
+- **Assertion 2**: [Provide assertion with explanation]  
+- **Assertion 3**: [Provide assertion with explanation]
+
+### 3. EDGE CASE TESTING
+Suggest 1 specific edge case that should be tested:
+
+- **Edge Case**: [Describe the scenario]
+- **Why Important**: [Explain why this case is critical]
+- **How to Test**: [Brief suggestion on how to verify this case]
+
+## OUTPUT FORMAT:
+Please structure your response clearly with the three sections above. Be specific and technical in your analysis. Focus on practical verification insights that would be valuable for a verification engineer.
