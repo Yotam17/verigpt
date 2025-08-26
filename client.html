@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VeriGPT Demo</title>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      margin: 2rem; 
+      background: #f8f9fa;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 { 
+      color: #2c3e50; 
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    
+    .input-group {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      align-items: center;
+    }
+    
+    input { 
+      flex: 1;
+      padding: 0.75rem 1rem; 
+      font-size: 1rem; 
+      border: 2px solid #e1e5e9;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    input:focus {
+      border-color: #007bff;
+    }
+    
+    button { 
+      padding: 0.75rem 1.5rem; 
+      font-size: 1rem; 
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    button:hover {
+      background: #0056b3;
+    }
+    
+    .answer-section {
+      margin-top: 2rem;
+    }
+    
+    h2 { 
+      color: #495057; 
+      margin-bottom: 1rem;
+      border-bottom: 2px solid #e9ecef;
+      padding-bottom: 0.5rem;
+    }
+    
+    .answer-content {
+      line-height: 1.6;
+      color: #495057;
+    }
+    
+    /* Code block styling */
+    .code-block {
+      margin: 1.5rem 0;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .code-header {
+      background: #2d3748;
+      color: white;
+      padding: 0.75rem 1rem;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .code-language {
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    .code-copy {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: background 0.2s;
+    }
+    
+    .code-copy:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .code-content {
+      background: #1a202c;
+      color: #e2e8f0;
+      padding: 1.5rem;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    
+    /* Regular text styling */
+    .text-content {
+      margin-bottom: 1rem;
+    }
+    
+    .artifact { 
+      margin-top: 1rem; 
+    }
+    
+    iframe, img { 
+      max-width: 100%; 
+      border: 1px solid #dee2e6; 
+      border-radius: 8px; 
+    }
+    
+    /* Loading state */
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 0.5rem;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 VeriGPT Demo</h1>
+
+    <div class="input-group">
+      <input id="query" type="text" placeholder="Ask something about SystemVerilog..." />
+      <button onclick="send()" id="sendBtn">
+        <span id="btnText">Send</span>
+      </button>
+    </div>
+
+    <div class="answer-section">
+      <h2>Answer:</h2>
+      <div id="answer" class="answer-content"></div>
+    </div>
+
+    <div id="artifact" class="artifact"></div>
+  </div>
+
+  <script>
+    function formatCodeBlocks(text) {
+      // Regular expression to find code blocks with ```language ... ```
+      const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+      
+      let formattedText = text;
+      let match;
+      let blockIndex = 0;
+      
+      while ((match = codeBlockRegex.exec(text)) !== null) {
+        const language = match[1] || 'text';
+        const code = match[2].trim();
+        const fullMatch = match[0];
+        
+        const codeBlockHtml = `
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-language">${language}</span>
+              <button class="code-copy" onclick="copyCode('code-${blockIndex}')">
+                Copy
+              </button>
+            </div>
+            <div class="code-content" id="code-${blockIndex}">${escapeHtml(code)}</div>
+          </div>
+        `;
+        
+        formattedText = formattedText.replace(fullMatch, codeBlockHtml);
+        blockIndex++;
+      }
+      
+      return formattedText;
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    function copyCode(codeId) {
+      const codeElement = document.getElementById(codeId);
+      const text = codeElement.textContent;
+      
+      navigator.clipboard.writeText(text).then(() => {
+        const button = codeElement.parentElement.querySelector('.code-copy');
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.style.background = '#28a745';
+        
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.background = 'rgba(255, 255, 255, 0.1)';
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+    }
+    
+    async function send() {
+      const query = document.getElementById("query").value;
+      const sendBtn = document.getElementById("sendBtn");
+      const btnText = document.getElementById("btnText");
+      
+      if (!query.trim()) return;
+      
+      // Show loading state
+      sendBtn.classList.add('loading');
+      btnText.innerHTML = '<span class="spinner"></span>Sending...';
+      
+      try {
+        const resp = await fetch("http://localhost:8000/agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query })
+        });
+        
+        const data = await resp.json();
+        
+        // Format the answer with code blocks
+        const formattedAnswer = formatCodeBlocks(data.answer || JSON.stringify(data, null, 2));
+        document.getElementById("answer").innerHTML = formattedAnswer;
+        
+        // Show artifact if exists
+        const artDiv = document.getElementById("artifact");
+        artDiv.innerHTML = ""; // clear old
+        
+        if (data.artifact_url) {
+          let el;
+          if (data.artifact_url.match(/\.(png|jpg|jpeg|gif|svg)$/)) {
+            el = document.createElement("img");
+            el.src = data.artifact_url;
+          } else if (data.artifact_url.match(/\.html$/)) {
+            el = document.createElement("iframe");
+            el.src = data.artifact_url;
+            el.width = "600";
+            el.height = "400";
+          } else {
+            el = document.createElement("a");
+            el.href = data.artifact_url;
+            el.target = "_blank";
+            el.textContent = "Download artifact";
+          }
+          artDiv.appendChild(el);
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById("answer").innerHTML = `
+          <div style="color: #dc3545; padding: 1rem; background: #f8d7da; border-radius: 8px;">
+            Error: ${error.message}
+          </div>
+        `;
+      } finally {
+        // Reset loading state
+        sendBtn.classList.remove('loading');
+        btnText.textContent = 'Send';
+      }
+    }
+    
+    // Allow Enter key to send
+    document.getElementById("query").addEventListener("keypress", function(event) {
+      if (event.key === "Enter") {
+        send();
+      }
+    });
+  </script>
+</body>
+</html>

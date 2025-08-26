@@ -49,6 +49,7 @@ logs/
 output/
 *.out
 *.tmp
+*.bak
 
 # OS
 .DS_Store

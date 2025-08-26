@@ -204,6 +204,11 @@ make setup-env
 
 המערכת כוללת שירות FastAPI מלא עם endpoints הבאים:
 
+### 🔒 CORS Support:
+- **CORS מופעל** לכל origins (מתאים לדמו)
+- **בייצור**: הגבל ל-domains ספציפיים
+- **דוגמה**: `allow_origins=["http://localhost:3000", "https://yourdomain.com"]`
+
 ### **Endpoints זמינים:**
 - **`GET /`** - מידע על השירות ובריאות המערכת
 - **`GET /health`** - בדיקת בריאות המערכת

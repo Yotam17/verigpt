@@ -26,8 +26,6 @@ def debug_env_vars():
     print(f"  OPENAI_TEMPERATURE: {os.getenv('OPENAI_TEMPERATURE', 'Not set')}")
     
 
-debug_env_vars()
-
 # Allowed file extensions
 ALLOWED_FILE_EXTENSIONS = ["sv", "svh"]
 

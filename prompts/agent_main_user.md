@@ -1,0 +1,1 @@
+Context:\n{context}\n\nQuestion: {query}

@@ -4,6 +4,7 @@ VeriGPT FastAPI Service - AI-based SystemVerilog code analysis
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
@@ -12,15 +13,19 @@ from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import OpenAIEmbeddings
 from openai import OpenAI
+from .prompt import get_prompt
 
 # Load environment variables
-load_dotenv()
+#load_dotenv()
 
 # OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Load embeddings (only to load FAISS, not for live embeddings)
-embeddings = OpenAIEmbeddings()
+embeddings = OpenAIEmbeddings(
+    model="text-embedding-3-small",
+    openai_api_key=os.getenv("OPENAI_API_KEY")
+)
 vectorstore = FAISS.load_local("data/faiss_index", embeddings, allow_dangerous_deserialization=True)
 
 # Try to load FAISS index if it exists
@@ -29,6 +34,10 @@ try:
     if faiss_path.exists():
         vectorstore = FAISS.load_local("data/faiss_index", embeddings, allow_dangerous_deserialization=True)
         print("✅ FAISS index loaded successfully")
+
+        vec = embeddings.embed_query("fifo buffer")
+        print("DEBUG: first 5 dims:", vec[:5])
+        print("DEBUG: vector length:", len(vec))
     else:
         print("⚠️  FAISS index not found at data/faiss_index")
         print("   Run the agent first to create the index")
@@ -49,6 +58,18 @@ app = FastAPI(
     title="VeriGPT API Service",
     description="AI-based SystemVerilog code analysis using RAG",
     version="1.0.0"
+)
+
+# Add CORS middleware to allow cross-origin requests
+# ⚠️  SECURITY NOTE: This configuration allows all origins for demo purposes
+#     In production, restrict allow_origins to specific domains
+#     Example: allow_origins=["http://localhost:3000", "https://yourdomain.com"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],        # Allow all origins (not secure for prod, but fine for demo)
+    allow_credentials=True,
+    allow_methods=["*"],        # Allow all HTTP methods
+    allow_headers=["*"],        # Allow all headers
 )
 
 # Request models
@@ -265,12 +286,21 @@ async def agent_endpoint(req: AgentRequest):
         docs = vectorstore.similarity_search(req.query, k=req.top_k)
         context = "\n\n".join([d.page_content for d in docs])
 
+        print(f"Context: {context}")
+
+        # Get system and user prompts
+        system_prompt = get_prompt("agent_main_system", {})
+        user_prompt = get_prompt("agent_main_user", {
+            "context": context,
+            "query": req.query
+        })
+
         # Get response from the model
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are an expert in SystemVerilog RTL."},
-                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {req.query}"}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
             ],
             temperature=0.2
         )
