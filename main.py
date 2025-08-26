@@ -7,13 +7,28 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
-from dotenv import load_dotenv
+from pathlib import Path
+from verigpt_agent import VeriGPTAgent
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import OpenAIEmbeddings
 
-# Load environment variables
-load_dotenv()
+# טען embeddings (רק כדי לטעון את ה־FAISS, לא לעשות live embeddings למסמכים)
+embeddings = OpenAIEmbeddings()
+vectorstore = FAISS.load_local("data/faiss_index", embeddings, allow_dangerous_deserialization=True)
+
+class AgentRequest(BaseModel):
+    query: str
+    top_k: int = 3
+
 
 # Import our VeriGPT agent
-from verigpt_agent import VeriGPTAgent
+try:
+    agent = VeriGPTAgent()
+    AGENT_READY = True
+except Exception as e:
+    print(f"⚠️  Warning: Could not initialize VeriGPT agent: {e}")
+    agent = None
+    AGENT_READY = False
 
 app = FastAPI(
     title="VeriGPT API Service",
@@ -41,12 +56,7 @@ class HealthResponse(BaseModel):
     environment: Dict[str, Any]
 
 # Initialize VeriGPT agent
-try:
-    agent = VeriGPTAgent()
-    AGENT_READY = True
-except Exception as e:
-    print(f"⚠️  Warning: Could not initialize VeriGPT agent: {e}")
-    AGENT_READY = False
+
 
 @app.get("/", response_model=HealthResponse)
 async def root():
@@ -73,6 +83,27 @@ async def health_check():
             "data_directory": "data/raw_full"
         }
     )
+
+@app.post("/agent")
+def agent_endpoint(req: AgentRequest):
+    # שליפה מ־FAISS
+    docs = vectorstore.similarity_search(req.query, k=req.top_k)
+    context = "\n\n".join([d.page_content for d in docs])
+
+    # תשובה מהמודל
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are an expert in SystemVerilog RTL."},
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {req.query}"}
+        ],
+        temperature=0.2
+    )
+
+    return {
+        "answer": response.choices[0].message.content,
+        "sources": [d.metadata for d in docs]
+    }
 
 @app.post("/analyze/code")
 async def analyze_code(request: AnalysisRequest):
@@ -127,7 +158,6 @@ async def analyze_files(request: FileAnalysisRequest):
 async def list_files():
     """List available SystemVerilog files"""
     try:
-        from pathlib import Path
         import glob
         
         data_dir = "data/raw_full"
@@ -162,7 +192,6 @@ async def list_files():
 async def get_stats():
     """Get statistics about the codebase"""
     try:
-        from pathlib import Path
         import glob
         
         data_dir = "data/raw_full"

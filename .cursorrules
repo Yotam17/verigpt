@@ -1,4 +1,6 @@
 All comments and data are English
+All readme and text files are English. Don't include Hebrew or other languages, even if used in the prompt 
 
 Don't mess with code parts which are out of the scope of the prompt. If you think it is needed - ask
 
+Don't add or use this: RUN apt-get update && apt-get install -y     build-essential     && rm -rf /var/lib/apt/lists/* 

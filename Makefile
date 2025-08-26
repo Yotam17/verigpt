@@ -38,44 +38,82 @@ shell:
 check-env:
 	@if [ ! -f .env ]; then \
 		echo "❌ .env file not found!"; \
-		echo "Please copy env.example to .env and set your OpenAI API key:"; \
-		echo "cp env.example .env"; \
-		echo "Then edit .env and add your OPENAI_API_KEY"; \
+		echo "Please run: make setup-env"; \
 		exit 1; \
 	else \
 		echo "✅ .env file found"; \
-		echo "Make sure OPENAI_API_KEY is set in .env"; \
+		echo "Checking environment variables..."; \
+		@if grep -q "your-openai-api-key-here" .env; then \
+			echo "⚠️  WARNING: OPENAI_API_KEY still has default value!"; \
+			echo "   Please edit .env and set your actual API key"; \
+		else \
+			echo "✅ OPENAI_API_KEY appears to be set"; \
+		fi; \
 	fi
 
 # Test environment variables
 test-env:
 	@echo "🧪 Testing environment variables..."
-	@python verigpt_agent.py --test-env
+	@python -m app.verigpt_agent --test-env
 
 # Setup environment (copy example and prompt user)
 setup-env:
 	@if [ ! -f .env ]; then \
 		cp env.example .env; \
 		echo "✅ Created .env from env.example"; \
-		echo "⚠️  Please edit .env and add your OPENAI_API_KEY"; \
+		echo "⚠️  IMPORTANT: Please edit .env and add your actual OpenAI API key"; \
+		echo "   Replace 'your-openai-api-key-here' with your real API key"; \
 		echo "   Then run: make check-env"; \
 	else \
 		echo "✅ .env file already exists"; \
+		echo "Checking if it needs updates..."; \
+		@if grep -q "your-openai-api-key-here" .env; then \
+			echo "⚠️  WARNING: .env still contains default values!"; \
+			echo "   Please update with your actual API key"; \
+		else \
+			echo "✅ .env appears to be properly configured"; \
+		fi; \
 	fi
 
-# Test the API service
+# Security check - verify .env is not committed
+security-check:
+	@echo "🔒 Security check..."
+	@if git ls-files | grep -q "\.env"; then \
+		echo "❌ CRITICAL: .env file is tracked by git!"; \
+		echo "   This is a security risk!"; \
+		echo "   Remove it with: git rm --cached .env"; \
+		exit 1; \
+	else \
+		echo "✅ .env file is not tracked by git (good!)"; \
+	fi
+	@if [ -f .env ]; then \
+		if grep -q "your-openai-api-key-here" .env; then \
+			echo "⚠️  WARNING: .env contains default values"; \
+		else \
+			echo "✅ .env contains custom values"; \
+		fi; \
+	else \
+		echo "⚠️  .env file not found"; \
+	fi
+
+# Test file structure
+test-structure:
+	@echo "🧪 Testing file structure..."
+	@python -m app.verigpt_agent --test-structure
+
+# Test API service
 test-api:
 	@echo "🧪 Testing API service..."
-	@curl -s http://localhost:8000/health | python -m json.tool || echo "❌ API service not responding"
+	@python app/test_api.py
 
 # Test API with Python script
 test-api-python:
-	@echo "🧪 Testing API service with Python..."
-	@python test_api.py
+	@echo "🧪 Testing API with Python script..."
+	@python app/test_api.py
 
-# Show API endpoints
+# Show API documentation URLs
 api-docs:
-	@echo "📚 API Documentation available at:"
+	@echo "📚 API Documentation:"
 	@echo "   Swagger UI: http://localhost:8000/docs"
 	@echo "   ReDoc: http://localhost:8000/redoc"
 	@echo "   Health: http://localhost:8000/health"

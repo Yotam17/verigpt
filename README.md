@@ -130,19 +130,48 @@ make logs
 # 1. התקן תלותות
 pip install -r requirements.txt
 
-# 2. הגדר משתני סביבה
-cp env.example .env
+# 2. הגדר משתני סביבה (בטוח)
+# ב-PowerShell:
+copy env.example .env
 # ערוך את .env והוסף את ה-API Key שלך
 
 # 3. הרץ את השירות
-python main.py
+python -m app.main
 
 # 4. פתח בדפדפן
 # Swagger UI: http://localhost:8000/docs
 # Health: http://localhost:8000/health
 
 # 5. בדוק עם Python
-python test_api.py
+python app/test_api.py
+```
+
+## 🚨 פתרון בעיות נפוצות:
+
+### **בעיה: "OPENAI_API_KEY not set"**
+```bash
+# פתרון: צור קובץ .env
+make setup-env
+# ערוך את .env והוסף את ה-API Key שלך
+make check-env
+```
+
+### **בעיה: "Could not initialize VeriGPT agent"**
+```bash
+# פתרון: בדוק שהמשתנים נטענים נכון
+# ב-PowerShell:
+python -m app.verigpt_agent --test-env
+
+# ב-Linux/Mac:
+make test-env
+make security-check
+```
+
+### **בעיה: שירות לא עונה על localhost:8000**
+```bash
+# פתרון: בדוק שהשירות רץ
+make test-api
+make logs
 ```
 
 ## 🔒 אבטחה ומשתני סביבה
@@ -153,10 +182,23 @@ python test_api.py
 - **Makefile**: כולל פקודות לבדיקה והגדרה בטוחה
 - **python-dotenv**: המערכת קוראת את .env אוטומטית עם `load_dotenv()`
 
+### 🔒 בדיקות אבטחה:
+```bash
+# בדיקה שהכל מוגדר נכון
+make security-check
+
+# בדיקת משתני הסביבה
+make check-env
+
+# הגדרה בטוחה של .env
+make setup-env
+```
+
 ### איך זה עובד:
 1. **במקומי**: `load_dotenv()` קורא את .env מהתיקייה הנוכחית
-2. **ב-Docker**: הקובץ .env מועבר לקונטיינר כ-volume read-only
+2. **ב-Docker**: docker-compose מעביר את משתני הסביבה אוטומטית
 3. **משתני סביבה**: נטענים אוטומטית ונגישים דרך `os.getenv()`
+4. **אבטחה**: הקוד בודק שהמשתנים נטענים נכון ומדווח על בעיות
 
 ## 🌐 שירות FastAPI
 
@@ -169,6 +211,8 @@ python test_api.py
 - **`POST /analyze/files`** - ניתוח קבצים ספציפיים
 - **`GET /files`** - רשימת כל קבצי SystemVerilog הזמינים
 - **`GET /stats`** - סטטיסטיקות על בסיס הקוד
+- **`GET /faiss/status`** - מצב ה-FAISS index
+- **`POST /agent`** - שאילתות RAG עם ה-FAISS index
 
 ### **איך לבדוק:**
 ```bash
@@ -183,8 +227,16 @@ curl -X POST http://localhost:8000/analyze/code \
   -H "Content-Type: application/json" \
   -d '{"code": "module test(); endmodule"}'
 
+# בדיקת מצב FAISS
+curl http://localhost:8000/faiss/status
+
+# שאילתת agent
+curl -X POST http://localhost:8000/agent \
+  -H "Content-Type: application/json" \
+  -d '{"query": "How does the FIFO work?", "top_k": 3}'
+
 # או בדיקה עם Python
-python test_api.py
+python app/test_api.py
 ```
 
 ### **ממשק משתמש:**
@@ -201,11 +253,26 @@ python test_api.py
 
 ## 🚀 שלבים הבאים
 
-- [ ] שמירת FAISS לתמיכה ב-Deploy
+- [x] שמירת FAISS לתמיכה ב-Deploy
 - [ ] הוספת agent_runner.py לשליטה במצב multi-tool
 - [ ] מערכת feedback פשוטה
 - [ ] CLI ממשק או Streamlit UI
 - [ ] פריסה על Render/Cloud
+
+## 🔍 יצירת FAISS Index
+
+כדי להשתמש ב-agent endpoint, צריך ליצור FAISS index תחילה:
+
+```bash
+# הרץ את הסוכן כדי ליצור את ה-index
+python -m app.verigpt_agent
+
+# או עם Docker
+make build
+make up
+```
+
+אחרי זה תוכל להשתמש ב-`/agent` endpoint לשאילתות RAG.
 
 ## 📞 תמיכה
 

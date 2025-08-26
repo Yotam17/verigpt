@@ -17,9 +17,6 @@ from langchain_community.chat_models import ChatOpenAI
 from langchain.schema import Document
 from prompt_bank import PromptBank
 
-# Load environment variables
-load_dotenv()
-
 # Debug: Check if environment variables are loaded
 def debug_env_vars():
     """Debug function to check environment variables"""

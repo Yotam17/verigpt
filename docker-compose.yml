@@ -11,6 +11,4 @@ services:
       - "8000:8000"
     volumes:
       - ./output:/app/output
-      # Mount .env file as read-only for python-dotenv to read
-      - ./.env:/app/.env:ro
     restart: unless-stopped
